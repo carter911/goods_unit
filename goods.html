@@ -1,0 +1,590 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN" ng-strict-di>
+<meta charset="utf-8">
+<meta name="renderer" content="webkit">
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+<meta name="X-Context-Path" content="" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<head>
+    <title>
+       goods
+    </title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+<!--引入wangEditor.css-->
+</head>
+<body>
+
+<style>
+	[v-cloak] {
+		display: none;
+	}
+    input[type=file]{
+        display: none;
+    }
+    .el-tag + .el-tag {
+        margin-left: 10px;
+    }
+    .button-new-tag {
+        margin-left: 10px;
+        height: 32px;
+        line-height: 30px;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    .input-new-tag {
+        width: 90px;
+        margin-left: 10px;
+        vertical-align: bottom;
+    }
+	.w-e-text-container {
+		height: 520px !important;
+	}
+
+
+	.unit-uploader .el-upload {
+		border: 1px dashed #d9d9d9;
+		border-radius: 6px;
+		cursor: pointer;
+		position: relative;
+		overflow: hidden;
+	}
+	.unit-uploader .el-upload:hover {
+		border-color: #409EFF;
+	}
+	.unit-uploader-icon {
+		font-size: 14px;
+		color: #8c939d;
+		width: 30px;
+		height: 30px;
+		line-height: 30px;
+		text-align: center;
+	}
+	.unit {
+		width: 30px;
+		height: 30px;
+		display: block;
+	}
+</style>
+<div class="container" id="app" v-cloak>
+    <div>
+        <el-form size="mini" :model="itemInfo" :rules="rules" ref="itemInfo" label-width="100px" class="demo-ruleForm">
+            <el-card class="box-card">
+                <div slot="header" class="clearfix">
+                    <span>商品规格信息(<span v-if="this.itemInfo.unitList.length<=0">单规格</span><span v-else>多规格</span>)</span>
+                    <el-button v-show="this.unit_show==true" v-on:click="unit_show=false" style="float: right; padding: 3px 0" type="text">收起</el-button>
+                    <el-button v-show="this.unit_show==false" v-on:click="unit_show=true" style="float: right; padding: 3px 0" type="text">展开</el-button>
+                </div>
+                <el-collapse-transition>
+                <div v-show="this.unit_show" class="transition-box">
+                    <el-row v-if="this.itemInfo.unitList.length<=0">
+                        <el-col :span="4">
+                            <el-form-item label="原价" prop="coupon_flag">
+                                <el-input v-model="itemInfo.unitStockInfo.price"></el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="4">
+                            <el-form-item label="折扣价" prop="coupon_flag">
+                                <el-input v-model="itemInfo.unitStockInfo.discount_price"></el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="4">
+                            <el-form-item label="活动价" prop="coupon_flag">
+                                <el-input v-model="itemInfo.unitStockInfo.event_price"></el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="4">
+                            <el-form-item label="sku" prop="coupon_flag">
+                                <el-input v-model="itemInfo.unitStockInfo.sku"></el-input>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="4">
+                            <el-form-item label="库存" prop="coupon_flag">
+                                <el-input v-model="itemInfo.unitStockInfo.num"></el-input>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row :gutter="20" v-for="(unit,key) in itemInfo.unitList">
+						<el-col :span="24">
+						<el-alert
+								title="提示 请先选择好所有需要的规格属性 然后填写下面的具体SKU信息,改变规格属性会生成不同SKU 会重新生成SKU信息"
+								type="warning">
+						</el-alert>
+						<br/>
+						</el-col>
+                        <el-col :span="24">
+                            <div style="background: #e5e9f2;padding: 8px;margin-bottom: 5px;">
+                                <el-row>
+                                    <el-col :span="24">
+                                        <el-row>
+                                            <el-col :span="20">
+                                                <el-form-item label="分类" prop="coupon_flag">
+                                                    <el-select  v-model="unit.unitDefId" @change="searchUnitDef" placeholder="请选择规格分类">
+                                                        <el-option
+                                                                v-for="unitItem in unitDef"
+                                                                v-if="unitDefLimit.indexOf(unitItem.id+':'+unitItem.name)<0"
+                                                                :key="unitItem.id"
+                                                                :label="unitItem.name"
+                                                                :value="unitItem.id+':'+unitItem.name">
+                                                        </el-option>
+                                                    </el-select>
+                                                </el-form-item>
+                                                </el-col>
+                                            <el-col :span="4">
+                                                <div style="text-align: right;margin-right: 5px;cursor: pointer">
+                                                    <i v-on:click="delUnitDef(key)" class="el-icon-close"></i>
+                                                </div>
+                                            </el-col>
+                                        </el-row>
+                                    </el-col>
+                                    <el-col :span="24" >
+                                        <el-form-item label="规格" prop="coupon_flag">
+                                            <el-row>
+                                                <el-col v-if="unit.unit.length>0" v-for="(u,k) in unit.unit" :span="4">
+                                                    <el-select  v-model="unit.unit[k]" placeholder="请选择规格" @change="unitSelect">
+                                                        <template v-for="(unitItem,unitDefKey) in unitDef" >
+                                                            <template v-if="unitItem.id+':'+unitItem.name == unit.unitDefId">
+                                                                <el-option
+                                                                        v-for="unitValue in unitItem.c"
+                                                                        v-if="unitLimit.indexOf(unitValue.value+':'+unitValue.label)<0"
+                                                                        :key="unitValue.value"
+                                                                        :label="unitValue.label"
+                                                                        :value="unitValue.value+':'+unitValue.label">
+                                                                </el-option>
+                                                            </template>
+
+                                                        </template>
+                                                    </el-select>
+                                                </el-col>
+                                                <el-col :span="4">
+                                                    <el-button v-if="unit.unitDefId?'disabled':''"  size="mini" v-on:click="addUnit(key)" >添加规格</el-button>
+                                                </el-col>
+                                            </el-row>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+
+                            </div>
+                        </el-col>
+                    </el-row>
+                    <br/>
+                    <el-row >
+                        <el-col :span="24">
+                            <div style="background: #e5e9f2;padding: 8px">
+                                <el-button size="mini" v-show="this.unit_show==true" v-on:click="addUnitDef()" >添加规格</el-button>
+                            </div>
+                        </el-col>
+                    </el-row>
+                    <el-row >
+                        <el-col :span="24">
+                            <table class='table' v-if="this.itemInfo.table.length>0">
+                                <tr>
+                                    <td :colspan="this.itemInfo.tableHeader.length">批量设置</td>
+                                    <td style="width: 100px"><el-input v-model="pl.price" size="mini"></el-input></td>
+                                    <td style="width: 100px" ><el-input  v-model="pl.discountPrice"  size="mini" ></el-input></td>
+                                    <td style="width: 100px"><el-input v-model="pl.eventPrice" size="mini" ></el-input></td>
+                                    <td style="width: 100px"><el-input v-model="pl.num"  size="mini" ></el-input></td>
+                                    <td style="width: 200px"><el-input v-model="pl.sku"  size="mini" ></el-input></td>
+                                    <td style="width: 200px"><el-input :disabled="true" v-model="pl.image" size="mini"></el-input></td>
+                                </tr>
+                                <tr v-if="this.itemInfo.tableHeader!=''">
+                                    <th v-for='item in this.itemInfo.tableHeader'>{{item[1]}}</th>
+                                    <th>价格</th>
+                                    <th>折扣价</th>
+                                    <th>活动价</th>
+                                    <th>库存</th>
+                                    <th>sku</th>
+                                    <th>图片</th>
+                                </tr>
+                                <tr v-for="(row,tableKey) in this.itemInfo.table" :key="tableKey">
+                                    <td v-for='(item,key) in row' >{{item[1]}}</td>
+                                    <td style="width: 100px">
+                                        <el-form-item label-width="0" :prop="'unitStock.'+tableKey+'.price'" :rules="rules.unitStock.price">
+                                            <el-input size="mini" v-model.trim="itemInfo.unitStock[tableKey].price"></el-input>
+                                        </el-form-item>
+                                    </td>
+                                    <td style="width: 100px" >
+                                        <el-form-item label-width="0" :prop="'unitStock.'+tableKey+'.discount_price'" :rules="rules.unitStock.discount_price">
+                                            <el-input  size="mini" v-model="itemInfo.unitStock[tableKey].discount_price"></el-input></td>
+                                        </el-form-item>
+                                    </td>
+                                    <td style="width: 100px">
+                                        <el-form-item label-width="0" :prop="'unitStock.'+tableKey+'.event_price'" :rules="rules.unitStock.event_price">
+                                            <el-input size="mini" v-model="itemInfo.unitStock[tableKey].event_price"></el-input></td>
+                                        </el-form-item>
+                                    </td>
+                                    <td style="width: 100px">
+                                        <el-form-item label-width="0" :prop="'unitStock.'+tableKey+'.num'" :rules="rules.unitStock.num">
+                                            <el-input size="mini" v-model="itemInfo.unitStock[tableKey].num">
+                                        </el-form-item>
+                                    </td>
+                                    <td >
+                                        <el-form-item label-width="0" :prop="'unitStock.'+tableKey+'.sku'" :rules="rules.unitStock.sku">
+                                            <el-input size="mini" v-model="itemInfo.unitStock[tableKey].sku"></el-input>
+                                        </el-form-item>
+                                    </td>
+                                    <td >
+<!--										<el-upload-->
+<!--												multiple-->
+<!--												action="admin/item/uploadImage"-->
+<!--												list-type="picture-card"-->
+<!--												:on-preview="handlePictureCardPreview"-->
+<!--												:on-success="uploadSuccess"-->
+<!--												:on-remove="handleRemove">-->
+<!--											<i class="el-icon-plus"></i>-->
+<!--										</el-upload>-->
+<!--										<ul>-->
+<!--											<draggable v-if="itemInfo.images>0" element="li" v-model="itemInfo.images">-->
+<!--												<img v-for="image in this.itemInfo.images" width="100%" :src="image" alt="">-->
+<!--											</draggable>-->
+<!--										</ul>-->
+										<el-upload
+												:data="{tableKey:tableKey}"
+												class="unit-uploader"
+												action="admin/item/uploadImage"
+												:show-file-list="false"
+												:on-success="uploadUnitSuccess"
+												:before-upload="beforeUnitUpload">
+											<img v-if="itemInfo.unitStock[tableKey].image" :src="itemPath+itemInfo.unitStock[tableKey].image" class="unit">
+											<i v-else class="el-icon-plus unit-uploader-icon"></i>
+										</el-upload>
+<!--										<el-input size="mini" v-model="itemInfo.unitStock[tableKey].image"></el-input>-->
+									</td>
+                                </tr>
+
+                            </table>
+                        </el-col>
+                    </el-row>
+                </div>
+                </el-collapse-transition>
+            </el-card>
+            <br>
+            <el-card class="box-card">
+				<el-form-item >
+					<el-button type="primary" @click="submitForm('itemInfo')">添加商品</el-button>
+					<el-button @click="resetForm('itemInfo')">重置</el-button>
+				</el-form-item>
+            </el-card>
+            {{itemInfo}}
+        </el-form>
+    </div>
+	<br/><br/><br/><br/><br/>
+</div>
+
+<!-- 先引入 Vue -->
+<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<!-- 引入组件库 -->
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://cdn.staticfile.org/vue-resource/1.5.1/vue-resource.min.js"></script>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: function() {
+            return {
+                info_show : true,
+                unit_show:true,
+                inputVisible:false,
+                dialogImageUrl:'',
+                category_list:[
+                    {value:'1',label:'测试'},
+                    {value:'2',label:'测试2'}
+                ],
+                subFlag:false,
+                inputValue:'',
+                itemInfo: {
+                    unitList:[],
+                    unitStock:[],
+                    unitAll:[],
+                    table:[],
+                    tableHeader:[],
+                    unitStockInfo:{
+                        price:'',
+                        discount_price:'',
+                        event_price:'',
+                        num:'',
+                        sku:''
+					}
+                },
+                unitStock:[],
+                rules: {
+                    unitList:[],
+                    unitAll:[],
+                    table:[],
+                    tableHeader:[],
+                    unitStock:{
+                        price:[{required: true, message: '价格必填', trigger: 'blur'}],
+                        discount_price:[{required: true, message: '折扣价必填', trigger: 'blur'}],
+                        event_price:[{required: true, message: '活动价必填', trigger: 'blur'}],
+                        num:[{required: true, message: '库存必须填写', trigger: 'blur'}],
+                        sku:[{ required: true, message: 'SKU必须填写', trigger: 'blur'}],
+                    },
+
+                },
+                unitDef:[
+                    {
+                    name:'颜色',
+                    id:1,
+                    c:[{label:'红色',value:11,p_id:1},{label:'黄色',value:12,p_id:1}]
+                    }
+                ,{name:'尺码',id:2,c:[{label:'42',value:21,p_id:2},{label:'43',value:22,p_id:2}]}],
+                pl:{
+                    price:0,
+                    discountPrice:0,
+                    eventPrice:0,
+                    num:0,
+                    sku:0,
+                    image:'',
+                },
+                unitDefLimit:[],
+                unitLimit:[],
+            }
+        },
+        created:function(){
+            //this.getUnitDef();
+        },
+        mounted:function () {
+        },
+        watch : {
+            "itemInfo.unitList":{
+                handler:function(unitList){
+                    var that = this;
+                    var selectCategory =[];
+                    this.itemInfo.tableHeader = [];
+                    this.table = [];
+                    if(unitList.length>0){
+                        var flag = true;
+                        unitList.forEach(function (value) {
+                            if(value.unit.length<0){
+                                flag = false;
+                            }
+                            var undef = value['unitDefId'].split(":")
+                            that.itemInfo.tableHeader.push(undef);
+                            var unit = [];
+                            value.unit.forEach(function (k) {
+                                if(k == ''){
+                                    flag = false;
+                                }else{
+                                    k = k.split(":");
+                                    k.undef = undef[0];
+                                    unit.push(k)
+                                }
+                            })
+                            if(unit){
+                                selectCategory.push(unit)
+                            }
+
+                        });
+                        this.itemInfo.table = this.cartesianProductOf.apply(this,selectCategory);
+                        that.itemInfo.unitStock = [];
+                        this.itemInfo.table.forEach(function (value) {
+                            var unitStock = {
+                                unit_def:that.itemInfo.tableHeader,
+                                unit:value,
+                                discount_price:'',
+                                price:'',
+                                num:'',
+                                event_price:'',
+                                sku:'',
+                                image:'',
+                            };
+                            that.itemInfo.unitStock.push(unitStock);
+                        });
+                        if(flag == false){
+                            this.tableHeader = [];
+                            this.table = [];
+                        }
+                    }
+                },
+                deep: true
+            },
+
+            "pl.price":{
+                handler:function(price){
+                    this.itemInfo.unitStock.forEach(function (value) {
+                        value.price = price;
+                    });
+                },
+            },
+            "pl.eventPrice":{
+                handler:function(eventPrice){
+                    this.itemInfo.unitStock.forEach(function (value) {
+                        value.event_price = eventPrice;
+                    });
+                },
+            },
+            "pl.discountPrice":{
+                handler:function(discountPrice){
+                    this.itemInfo.unitStock.forEach(function (value) {
+                        value.discount_price = discountPrice;
+                    });
+                },
+            },
+            "pl.num":{
+                handler:function(num){
+                    this.itemInfo.unitStock.forEach(function (value) {
+                        value.num = num;
+                    });
+                },
+            },
+            "pl.sku":{
+                handler:function(sku){
+                    this.itemInfo.unitStock.forEach(function (value) {
+                        value.sku = sku;
+                    });
+                },
+            },
+        },
+        methods: {
+            addUnitDef:function(){
+                var unit = {
+                    unitDefId:'',
+                    unitDef:'',
+                    unit:[],
+                };
+                this.itemInfo.unitList.push(unit);
+            },
+            addUnit:function(key){
+                var unit = '';
+                this.itemInfo.unitList[key]['unit'].push(unit);
+                this.updateSelectUnit();
+            },
+            delUnit:function(key,k){
+                this.itemInfo.unitList[key]['unit'].splice(k,1);
+                this.updateSelectUnit();
+            },
+            delUnitDef:function(key){
+                this.itemInfo.unitList.splice(key,1);
+                this.updateSelectUnit();
+            },
+            getUnitDef:function(queryString, cb){
+                // var that = this;
+                // this.$http.get('http://api.xxx.cn/admin/item/get_unit_def').then(function(res){
+                //     that.results  = res.body.data;
+                //     that.results.filter(function(item,index,arr){
+                //         //需要筛选出已选中的
+                //
+                //         return item;
+                //     });
+                //     that.unitDef = that.results;
+                // },function(){
+                //     console.log('请求失败处理');
+                // });
+            },
+
+            getUnit:function(queryString, callback){
+                // var that = this;
+                // this.$http.get('http://api.xxx.cn/admin/item/get_unit/id/'+queryString).then(function(res){
+                //     that.results  = res.body.data;
+                //     callback(that.results);
+                // },function(){
+                //     console.log('请求失败处理');
+                // });
+            },
+            searchUnitDef: function(item){
+                this.updateSelectUnit();
+            },
+
+            updateSelectUnit: function(){
+                this.unitDefLimit = [];
+                this.unitLimit;
+                var that = this;
+                this.itemInfo.unitList.forEach(function (value) {
+                    that.unitDefLimit.push(value.unitDefId);
+                    value.unit.forEach(function (v) {
+                        if(v !=''){
+                            that.unitLimit.push(v);
+                        }
+
+                    });
+                });
+            },
+            unitSelect:function(item){
+                this.updateSelectUnit();
+                console.log('222',item.value)
+            },
+            submitForm(formName) {
+                var that = this;
+                if(this.subFlag == true){
+                    this.$message({
+                        message: '已经提交 请勿重复提交',
+                        type: 'error'
+                    });
+                }
+                this.subFlag =true;
+                this.itemInfo['unit'] = this.table;
+                var form = this.itemInfo;
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                       console.log(form);
+                    } else {
+                        that.subFlag = false;
+                        that.$message({
+                            message: '商品信息填写不完整,请先完善商品信息',
+                            type: 'error'
+                        });
+                		return false;
+            		}
+            });
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+            },
+            handleRemove(file, fileList) {
+                console.log(file, fileList);
+                this.itemInfo.images.each(function(k,item){
+                    if(item ==file.response.url ){
+                        this.itemInfo.images.splice(k, 1);
+                    }
+                })
+            },
+            handlePictureCardPreview(file) {
+                this.dialogImageUrl = file.url;
+                this.dialogVisible = true;
+            },
+            uploadSuccess(response, file, fileList){
+                this.itemInfo.images.push(response.url);
+            },
+
+            beforeUnitUpload(){
+
+			},
+            uploadUnitSuccess(response, file, fileList){
+                console.log(response, file, fileList);
+                //this.itemInfo.images.push(response.url);
+                this.itemInfo.unitStock[response.tableKey].image = response.url
+            },
+
+
+            handleClose(tag) {
+                this.itemInfo.tag.splice(this.itemInfo.tag.indexOf(tag), 1);
+            },
+
+            showInput() {
+                this.inputVisible = true;
+                this.$nextTick(_ => {
+                    this.$refs.saveTagInput.$refs.input.focus();
+                });
+            },
+            handleInputConfirm() {
+                var inputValue = this.inputValue;
+                if (inputValue) {
+                    this.itemInfo.tag.push(inputValue);
+                }
+                this.inputVisible = false;
+                this.inputValue = '';
+            },
+            cartesianProductOf() {
+                return Array.prototype.reduce.call(arguments,function(a, b) {
+                    var ret = [];
+                    a.forEach(function(a) {
+                        b.forEach(function(b) {
+                            ret.push(a.concat([b]));
+                        });
+                    });
+                    return ret;
+                }, [[]]);
+            }
+        }
+    })
+</script>
